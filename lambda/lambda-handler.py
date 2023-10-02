@@ -16,7 +16,7 @@ def lambda_handler(event, context):
         event['Records'][0]['s3']['object']['key'], encoding='utf-8')
     try:
         print("Downloading file from s3")
-        s3.meta.client.download_file(bucket, key, '/tmp/' + key)
+        s3.download_file(bucket, key, '/tmp/' + key)
         print("File downloaded")
         with open('/tmp/' + key, 'r') as file:
             contents = file.read()

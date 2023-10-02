@@ -14,14 +14,23 @@ class LambdaCdkStack(Stack):
 
         # create lambda function
         function = _lambda.Function(self, "lambda_function",
-                                    runtime=_lambda.Runtime.PYTHON_3_7,
-                                    handler="lambda-handler.main",
+                                    function_name="lambda_read_s3_object_trigger",
+                                    runtime=_lambda.Runtime.PYTHON_3_11,
+                                    handler="lambda-handler.lambda_handler",
                                     code=_lambda.Code.from_asset("./lambda"))
         # create s3 bucket
-        s3 = _s3.Bucket(self, "s3bucket")
+        s3 = _s3.Bucket(self, "s3bucket",
+                        bucket_name="lambda-cdk-s3-bucket-michaelg",
+                        block_public_access=_s3.BlockPublicAccess.BLOCK_ALL,
+                        encryption=_s3.BucketEncryption.S3_MANAGED,
+                        enforce_ssl=True,
+                        versioned=True,)
 
         # create s3 notification for lambda function
         notification = aws_s3_notifications.LambdaDestination(function)
 
         # assign notification for the s3 event type (ex: OBJECT_CREATED)
         s3.add_event_notification(_s3.EventType.OBJECT_CREATED, notification)
+
+        # allow Lambda to read the bucket
+        s3.grant_read(function)
