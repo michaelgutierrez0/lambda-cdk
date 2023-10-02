@@ -2,9 +2,12 @@ from aws_cdk import (
     aws_lambda as _lambda,
     aws_s3 as _s3,
     aws_s3_notifications,
+    aws_iam as _iam,
     Stack,
+    RemovalPolicy,
 )
 from constructs import Construct
+from aws_cdk.aws_iam import Effect
 
 
 class LambdaCdkStack(Stack):
@@ -27,15 +30,33 @@ class LambdaCdkStack(Stack):
             bucket_name="lambda-cdk-s3-bucket-michaelg",
             block_public_access=_s3.BlockPublicAccess.BLOCK_ALL,
             encryption=_s3.BucketEncryption.S3_MANAGED,
-            enforce_ssl=True,
             versioned=True,
+            removal_policy=RemovalPolicy.DESTROY,
         )
+
+        # create bucket policy to only allow Lambda to access the bucket
+        s3_policy = _iam.PolicyStatement(
+            effect=Effect.DENY,
+            resources=[s3.arn_for_objects("*")],
+            actions=["s3:*"],
+            principals=[_iam.AnyPrincipal()],
+        )
+
+        s3_policy.add_condition(
+            "StringNotLike",
+            {
+                "aws:PrincipalArn": [
+                    s3_lambda_function.role.role_arn,
+                    "arn:aws:iam::262340536653:user/MichaelGutierrez",
+                ]
+            },
+        )
+
+        # apply bucket policy
+        s3.add_to_resource_policy(s3_policy)
 
         # create s3 notification for lambda function
         notification = aws_s3_notifications.LambdaDestination(s3_lambda_function)
 
         # assign notification for the s3 event type (ex: OBJECT_CREATED)
         s3.add_event_notification(_s3.EventType.OBJECT_CREATED, notification)
-
-        # allow Lambda to read the bucket
-        s3.grant_read(s3_lambda_function)
